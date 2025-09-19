@@ -75,7 +75,9 @@ for i in range(5):
     cy = random.randint(100, 400)
     size = random.randint(50, 120)
     clouds.append([cx, cy, size])
+ 
 
+ 
 def draw_background(scroll):
     # Sky gradient
     for i in range(HEIGHT):
