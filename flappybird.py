@@ -150,7 +150,7 @@ def game_over_screen(last_score, high_score):
 
         if draw_button("Return Home", (WIDTH//2, HEIGHT//2 + 100)):
             return "home"
-        if draw_button("↺ Play Again", (WIDTH//2, HEIGHT//2 + 160)):
+        if draw_button("Play Again", (WIDTH//2, HEIGHT//2 + 160)):
             return "retry"
 
         pygame.display.update()
@@ -158,10 +158,7 @@ def game_over_screen(last_score, high_score):
             if ev.type == pygame.QUIT:
                 pygame.quit(); sys.exit()
 
-# --- Auto controller (position-based) ---
-# This controller does not use discrete flaps. Instead it calculates a smooth
-# per-frame vertical velocity that drives the bird towards the pipe gap center.
-# Because collisions are disabled in Auto mode, it will always pass.
+# --- Auto controller ---
 def auto_controller(bird_rect, bird_v, pairs, pipe_speed, gap=PIPE_GAP):
     # if no pipes yet, gently move bird toward vertical center
     if not pairs:
