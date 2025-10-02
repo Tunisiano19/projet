@@ -1,7 +1,7 @@
 import pygame, sys, random
 
 # ==============================
-# --- Flappy Bird with Auto AI ---
+#         Flappy Bird Anas
 # ==============================
 
 pygame.init()
@@ -23,10 +23,6 @@ FLOOR_HEIGHT = 100
 # --- Colors ---
 SKY_TOP = (135, 206, 250)
 SKY_BOTTOM = (70, 130, 180)
-PIPE_COLOR = (34, 139, 34)
-PIPE_BORDER = (0, 100, 0)
-FLOOR_TOP = (85, 107, 47)
-FLOOR_BOTTOM = (139, 69, 19)
 TEXT_COLOR = (255, 255, 255)
 BUTTON_COLOR = (255, 200, 100)
 BUTTON_HOVER = (255, 230, 180)
@@ -38,7 +34,10 @@ bird_rect = bird_surface.get_rect(center=(WIDTH // 4, HEIGHT // 2))
 
 # --- Pipes ---
 def create_pipe(gap=PIPE_GAP):
-    pipe_height = random.randint(150, 400)
+    min_height = 100
+    max_height = HEIGHT - FLOOR_HEIGHT - 100
+    pipe_height = random.randint(min_height + gap, max_height)
+
     bottom_pipe = pygame.Rect(WIDTH + 100, pipe_height, PIPE_WIDTH, HEIGHT - pipe_height - FLOOR_HEIGHT)
     top_pipe = pygame.Rect(WIDTH + 100, 0, PIPE_WIDTH, pipe_height - gap)
     return bottom_pipe, top_pipe
@@ -51,10 +50,16 @@ def move_pipes(pairs, speed):
 
 def draw_pipes(pairs):
     for bottom, top in pairs:
-        pygame.draw.rect(win, PIPE_COLOR, bottom, border_radius=10)
-        pygame.draw.rect(win, PIPE_BORDER, bottom, 4, border_radius=10)
-        pygame.draw.rect(win, PIPE_COLOR, top, border_radius=10)
-        pygame.draw.rect(win, PIPE_BORDER, top, 4, border_radius=10)
+        # Draw bottom pipe with gradient
+        pygame.draw.rect(win, (0, 200, 0), bottom, border_radius=8)
+        pygame.draw.rect(win, (0, 100, 0), bottom, 6, border_radius=8)
+        pygame.draw.rect(win, (0, 200, 0), top, border_radius=8)
+        pygame.draw.rect(win, (0, 100, 0), top, 6, border_radius=8)
+
+        # Add pipe "lip"
+        lip_height = 15
+        pygame.draw.rect(win, (20, 80, 20), (bottom.x-5, bottom.y, PIPE_WIDTH+10, lip_height))
+        pygame.draw.rect(win, (20, 80, 20), (top.x-5, top.bottom-lip_height, PIPE_WIDTH+10, lip_height))
 
 # --- Collision ---
 def check_collision(pairs, bird_rect):
@@ -84,11 +89,45 @@ def draw_button(text, center):
     win.blit(surface, surface.get_rect(center=rect.center))
     return False
 
-# --- Background ---
-clouds = [[random.randint(0, WIDTH), random.randint(50, 250),
-           random.randint(30, 60), random.uniform(0.5, 2)] for _ in range(6)]
 
+# --- Clouds ---
+def create_cloud():
+    x = WIDTH + random.randint(50, 400)
+    y = random.randint(30, HEIGHT // 3)
+    scale = random.randint(60, 120)
+    speed = random.uniform(0.3, 1.0)
+    return {"x": x, "y": y, "scale": scale, "speed": speed}
+
+def move_clouds():
+    global clouds
+    for cloud in clouds:
+        cloud["x"] -= cloud["speed"]
+    # respawn clouds that go offscreen
+    for i, cloud in enumerate(clouds):
+        if cloud["x"] < -200:
+            clouds[i] = create_cloud()
+
+def draw_clouds():
+    for cloud in clouds:
+        draw_cloud_shape(cloud["x"], cloud["y"], cloud["scale"])
+
+def draw_cloud_shape(x, y, scale):
+    surf = pygame.Surface((scale*2, scale), pygame.SRCALPHA)
+    color = (255, 255, 255, 220)
+
+    pygame.draw.ellipse(surf, color, [0, scale//3, scale, scale//2])
+    pygame.draw.ellipse(surf, color, [scale//2, 0, scale, scale//1.5])
+    pygame.draw.ellipse(surf, color, [scale, scale//3, scale, scale//2])
+
+    win.blit(surf, (x, y))
+
+# initialize clouds AFTER functions are defined
+clouds = [create_cloud() for _ in range(5)]
+
+
+# --- Background ---
 def draw_background():
+    # gradient sky
     for y in range(HEIGHT):
         t = y / HEIGHT
         r = int(SKY_TOP[0] * (1 - t) + SKY_BOTTOM[0] * t)
@@ -96,31 +135,27 @@ def draw_background():
         b = int(SKY_TOP[2] * (1 - t) + SKY_BOTTOM[2] * t)
         pygame.draw.line(win, (r, g, b), (0, y), (WIDTH, y))
 
-    for c in clouds:
-        cx, cy, size, speed = c
-        pygame.draw.ellipse(win, (255, 255, 255), (cx, cy, size*2, size))
-        c[0] -= speed
-        if c[0] < -200:
-            c[0] = WIDTH + 200
-            c[1] = random.randint(50, 250)
-            c[2] = random.randint(30, 60)
-            c[3] = random.uniform(0.5, 2)
+    # clouds
+    move_clouds()
+    draw_clouds()
 
+
+# --- Floor ---
 floor_x = 0
 def draw_floor(speed_x):
     global floor_x
     floor_x -= speed_x
     if floor_x <= -WIDTH:
         floor_x = 0
-    pygame.draw.rect(win, FLOOR_BOTTOM, (0, HEIGHT - FLOOR_HEIGHT, WIDTH, FLOOR_HEIGHT))
-    pygame.draw.rect(win, FLOOR_TOP, (floor_x, HEIGHT - FLOOR_HEIGHT, WIDTH, 30))
-    pygame.draw.rect(win, FLOOR_TOP, (floor_x + WIDTH, HEIGHT - FLOOR_HEIGHT, WIDTH, 30))
+    pygame.draw.rect(win, (139, 69, 19), (0, HEIGHT - FLOOR_HEIGHT, WIDTH, FLOOR_HEIGHT))
+    pygame.draw.rect(win, (100, 50, 20), (floor_x, HEIGHT - FLOOR_HEIGHT, WIDTH, 30))
+    pygame.draw.rect(win, (100, 50, 20), (floor_x + WIDTH, HEIGHT - FLOOR_HEIGHT, WIDTH, 30))
 
 # --- Screens ---
 def home_screen():
     while True:
         draw_background()
-        draw_text = FONT.render("🎮 Flappy Bird 🎮", True, (255, 255, 0))
+        draw_text = FONT.render("Flappy Bird", True, (255, 255, 0))
         win.blit(draw_text, draw_text.get_rect(center=(WIDTH//2, HEIGHT//2 - 120)))
 
         if draw_button("Play in Auto Mode", (WIDTH//2, HEIGHT//2 - 20)):
@@ -136,7 +171,7 @@ def home_screen():
 def game_over_screen(last_score, high_score):
     while True:
         draw_background()
-        title = FONT.render("💀 Game Over! 💀", True, (255, 50, 50))
+        title = FONT.render("Game Over!", True, (255, 50, 50))
         win.blit(title, title.get_rect(center=(WIDTH//2, HEIGHT//2 - 120)))
 
         s1 = FONT.render(f"Score: {int(last_score)}", True, TEXT_COLOR)
@@ -144,9 +179,9 @@ def game_over_screen(last_score, high_score):
         win.blit(s1, s1.get_rect(center=(WIDTH//2, HEIGHT//2 - 40)))
         win.blit(s2, s2.get_rect(center=(WIDTH//2, HEIGHT//2 + 10)))
 
-        if draw_button("🏠 Return Home", (WIDTH//2, HEIGHT//2 + 100)):
+        if draw_button("Return Home", (WIDTH//2, HEIGHT//2 + 100)):
             return "home"
-        if draw_button("↺ Play Again", (WIDTH//2, HEIGHT//2 + 160)):
+        if draw_button("Play Again", (WIDTH//2, HEIGHT//2 + 160)):
             return "retry"
 
         pygame.display.update()
@@ -178,24 +213,31 @@ def auto_should_flap(pipe_pairs, bird_y, bird_v, pipe_speed, gap=PIPE_GAP):
 
     margin = gap * 0.25
 
-    # if predicted too low, flap
     if pred_no_flap > gap_center + margin:
         if pred_with_flap < gap_center - margin:
             return False
         return True
 
-    # if rising and above center, avoid flapping
     if bird_y < gap_center - margin and bird_v < 0:
         return False
 
     return False
 
 def auto_controller(bird_rect, bird_v, pipe_pairs, pipe_speed, gap):
+    bird_v += GRAVITY
+
     if auto_should_flap(pipe_pairs, bird_rect.centery, bird_v, pipe_speed, gap):
         bird_v = JUMP_STRENGTH
-    else:
-        bird_v += GRAVITY
+
     bird_rect.centery += bird_v
+
+    if bird_rect.top < 0:
+        bird_rect.top = 0
+        bird_v = GRAVITY
+    if bird_rect.bottom > HEIGHT - FLOOR_HEIGHT:
+        bird_rect.bottom = HEIGHT - FLOOR_HEIGHT
+        bird_v = JUMP_STRENGTH
+
     return bird_v
 
 # --- Game ---
