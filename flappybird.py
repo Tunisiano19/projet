@@ -1,10 +1,13 @@
 import pygame, sys, random
 
-# --- Flappy Bird Mini (robust Auto MODE) ---
+# ==============================
+# --- Flappy Bird with Auto AI ---
+# ==============================
+
 pygame.init()
 WIDTH, HEIGHT = 800, 600
 win = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Flappy Bird Mini — Auto Controller v2")
+pygame.display.set_caption("Flappy Bird — Manual & Auto Mode")
 clock = pygame.time.Clock()
 FONT = pygame.font.SysFont("Arial", 36, bold=True)
 
@@ -33,7 +36,7 @@ bird_surface = pygame.image.load("bird.png").convert_alpha()
 bird_surface = pygame.transform.scale(bird_surface, (50, 40))
 bird_rect = bird_surface.get_rect(center=(WIDTH // 4, HEIGHT // 2))
 
-# --- Helper: Pipes ---
+# --- Pipes ---
 def create_pipe(gap=PIPE_GAP):
     pipe_height = random.randint(150, 400)
     bottom_pipe = pygame.Rect(WIDTH + 100, pipe_height, PIPE_WIDTH, HEIGHT - pipe_height - FLOOR_HEIGHT)
@@ -53,7 +56,7 @@ def draw_pipes(pairs):
         pygame.draw.rect(win, PIPE_COLOR, top, border_radius=10)
         pygame.draw.rect(win, PIPE_BORDER, top, 4, border_radius=10)
 
-# --- Collision check ---
+# --- Collision ---
 def check_collision(pairs, bird_rect):
     if bird_rect.top <= 0 or bird_rect.bottom >= HEIGHT - FLOOR_HEIGHT:
         return False
@@ -62,7 +65,7 @@ def check_collision(pairs, bird_rect):
             return False
     return True
 
-# --- UI: buttons ---
+# --- Buttons ---
 def draw_button(text, center):
     mouse = pygame.mouse.get_pos()
     click = pygame.mouse.get_pressed()
@@ -81,10 +84,9 @@ def draw_button(text, center):
     win.blit(surface, surface.get_rect(center=rect.center))
     return False
 
-# --- Background / floor ---
-clouds = []
-for i in range(6):
-    clouds.append([random.randint(0, WIDTH), random.randint(50, 250), random.randint(30, 60), random.uniform(0.5, 2)])
+# --- Background ---
+clouds = [[random.randint(0, WIDTH), random.randint(50, 250),
+           random.randint(30, 60), random.uniform(0.5, 2)] for _ in range(6)]
 
 def draw_background():
     for y in range(HEIGHT):
@@ -118,7 +120,7 @@ def draw_floor(speed_x):
 def home_screen():
     while True:
         draw_background()
-        draw_text = FONT.render("🎮 Flappy Bird Mini 🎮", True, (255, 255, 0))
+        draw_text = FONT.render("🎮 Flappy Bird 🎮", True, (255, 255, 0))
         win.blit(draw_text, draw_text.get_rect(center=(WIDTH//2, HEIGHT//2 - 120)))
 
         if draw_button("Play in Auto Mode", (WIDTH//2, HEIGHT//2 - 20)):
@@ -152,7 +154,7 @@ def game_over_screen(last_score, high_score):
             if ev.type == pygame.QUIT:
                 pygame.quit(); sys.exit()
 
-# --- Auto controller ---
+# --- Auto Controller ---
 def auto_should_flap(pipe_pairs, bird_y, bird_v, pipe_speed, gap=PIPE_GAP):
     next_pair = None
     min_dx = float('inf')
@@ -174,32 +176,31 @@ def auto_should_flap(pipe_pairs, bird_y, bird_v, pipe_speed, gap=PIPE_GAP):
     pred_no_flap = bird_y + bird_v * frames_ahead + 0.5 * GRAVITY * (frames_ahead ** 2)
     pred_with_flap = bird_y + JUMP_STRENGTH * frames_ahead + 0.5 * GRAVITY * (frames_ahead ** 2)
 
-    margin = gap * 0.20
+    margin = gap * 0.25
 
+    # if predicted too low, flap
     if pred_no_flap > gap_center + margin:
         if pred_with_flap < gap_center - margin:
             return False
         return True
 
+    # if rising and above center, avoid flapping
     if bird_y < gap_center - margin and bird_v < 0:
         return False
-
-    close_threshold = max(6, effective_speed * 6)
-    if frames_ahead <= close_threshold and bird_v > 4 and bird_y > gap_center + (margin * 0.5):
-        return True
 
     return False
 
 def auto_controller(bird_rect, bird_v, pipe_pairs, pipe_speed, gap):
     if auto_should_flap(pipe_pairs, bird_rect.centery, bird_v, pipe_speed, gap):
-        return JUMP_STRENGTH
+        bird_v = JUMP_STRENGTH
     else:
-        return bird_v + GRAVITY
+        bird_v += GRAVITY
+    bird_rect.centery += bird_v
+    return bird_v
 
-# --- Main game runner ---
+# --- Game ---
 SPAWNPIPE = pygame.USEREVENT + 1
 pygame.time.set_timer(SPAWNPIPE, 1500)
-
 high_score = 0
 
 def run_game(mode):
@@ -237,7 +238,6 @@ def run_game(mode):
                 bird_rect.centery += bird_v
             else:
                 bird_v = auto_controller(bird_rect, bird_v, pipe_pairs, pipe_speed, PIPE_GAP)
-                bird_rect.centery += bird_v
                 if draw_button("❌ Exit Auto Mode", (WIDTH - 120, HEIGHT - 40)):
                     return "home"
 
@@ -271,10 +271,9 @@ def run_game(mode):
                 return "home"
             else:
                 return mode
-
     return "home"
 
-# --- Main loop ---
+# --- Main Loop ---
 while True:
     mode = home_screen()
     result = run_game(mode)
